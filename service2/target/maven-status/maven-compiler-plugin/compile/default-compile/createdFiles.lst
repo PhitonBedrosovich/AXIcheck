@@ -1,0 +1,5 @@
+com\example\service2\service\ProcessService.class
+com\example\service2\Service2Application.class
+com\example\service2\dto\RequestDTO.class
+com\example\service2\exception\GlobalExceptionHandler.class
+com\example\service2\controller\ProcessController.class
