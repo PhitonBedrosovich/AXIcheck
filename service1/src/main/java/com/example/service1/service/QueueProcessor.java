@@ -8,6 +8,8 @@ import com.example.service1.repository.RequestItemRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ public class QueueProcessor {
     private final RequestItemRepository requestItemRepository;
     private final Service2Client service2Client;
     private static final Logger logger = LoggerFactory.getLogger(QueueProcessor.class);
+    private static final int BATCH_SIZE = 100;
 
     @Autowired
     public QueueProcessor(
@@ -36,16 +39,15 @@ public class QueueProcessor {
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void processQueue() {
-        List<QueueItem> readyItems = queueItemRepository.findReadyToProcess(LocalDateTime.now());
+        Pageable pageable = PageRequest.of(0, BATCH_SIZE);
+        List<QueueItem> readyItems = queueItemRepository.findReadyToProcess(LocalDateTime.now(), pageable);
         
         for (QueueItem queueItem : readyItems) {
             RequestItem requestItem = queueItem.getRequestItem();
-            int updated = requestItemRepository.updateStatusIfPending(requestItem.getId(), RequestStatus.PROCESSING);
-            if (updated == 0) {
-                continue;
-            }
+            
+            // Статус обновляется в памяти, а пессимистическая блокировка гарантирует,
+            // что никто другой не сможет изменить этот объект до завершения транзакции.
             requestItem.setStatus(RequestStatus.PROCESSING);
-            requestItemRepository.save(requestItem);
 
             try {
                 logger.info("Sending request to Service2 for RequestItem ID: {}", requestItem.getId());
