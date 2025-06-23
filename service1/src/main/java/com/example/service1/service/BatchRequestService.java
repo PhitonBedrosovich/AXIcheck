@@ -249,61 +249,19 @@ public class BatchRequestService {
         public BatchNotFoundException(String message) { super(message); }
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public BatchStatusResponse getBatchStatus(Long batchId) {
         List<com.example.service1.dto.BatchStatusAggregationDTO> resultList = requestItemRepository.getBatchStatusAggregationDTO(batchId);
         if (resultList == null || resultList.isEmpty() || resultList.get(0) == null) {
             throw new BatchNotFoundException("Batch not found");
         }
+        
         com.example.service1.dto.BatchStatusAggregationDTO result = resultList.get(0);
         int totalRequests = result.getTotalRequests() != null ? result.getTotalRequests().intValue() : 0;
         int successCount = result.getSuccessCount() != null ? result.getSuccessCount().intValue() : 0;
         int errorCount = result.getErrorCount() != null ? result.getErrorCount().intValue() : 0;
         int progress = totalRequests > 0 ? ((successCount + errorCount) * 100) / totalRequests : 0;
-        String status;
-        if (progress == 100) {
-            if (totalRequests == 1) {
-                // Для одного файла: только COMPLETED или FAILED
-                status = errorCount > 0 ? "FAILED" : "COMPLETED";
-            } else {
-                // Для нескольких файлов
-                if (successCount == totalRequests) {
-                    status = "COMPLETED"; // Все файлы успешно
-                } else if (successCount == 0) {
-                    status = "FAILED"; // Ни один файл не успешен
-                } else {
-                    status = "PROCESSING"; // Часть файлов обработана
-                }
-            }
-        } else if (progress > 0) {
-            status = "PROCESSING";
-        } else {
-            status = "PENDING";
-        }
         
-        // Обновляем статус пакетного запроса в базе данных
-        BatchRequest batchRequest = batchRequestRepository.findById(batchId)
-                .orElseThrow(() -> new BatchNotFoundException("Batch not found"));
-        
-        BatchStatus batchStatus;
-        switch (status) {
-            case "COMPLETED":
-                batchStatus = BatchStatus.COMPLETED;
-                break;
-            case "FAILED":
-                batchStatus = BatchStatus.FAILED;
-                break;
-            case "PROCESSING":
-                batchStatus = BatchStatus.PROCESSING;
-                break;
-            default:
-                batchStatus = BatchStatus.PENDING;
-        }
-        
-        batchRequest.setStatus(batchStatus);
-        batchRequestRepository.save(batchRequest);
-        logger.info("Updated batch request {} status to {}", batchId, batchStatus);
-        
-        return new BatchStatusResponse(status, progress, successCount, errorCount);
+        return new BatchStatusResponse(result.getStatus(), progress, successCount, errorCount);
     }
 } 
