@@ -255,19 +255,13 @@ public class BatchRequestService {
         if (resultList == null || resultList.isEmpty() || resultList.get(0) == null) {
             throw new BatchNotFoundException("Batch not found");
         }
+        
         com.example.service1.dto.BatchStatusAggregationDTO result = resultList.get(0);
         int totalRequests = result.getTotalRequests() != null ? result.getTotalRequests().intValue() : 0;
         int successCount = result.getSuccessCount() != null ? result.getSuccessCount().intValue() : 0;
         int errorCount = result.getErrorCount() != null ? result.getErrorCount().intValue() : 0;
         int progress = totalRequests > 0 ? ((successCount + errorCount) * 100) / totalRequests : 0;
-        String status;
-        if (progress == 100) {
-            status = errorCount > 0 ? "FAILED" : "COMPLETED";
-        } else if (progress > 0) {
-            status = "PROCESSING";
-        } else {
-            status = "PENDING";
-        }
-        return new BatchStatusResponse(status, progress, successCount, errorCount);
+        
+        return new BatchStatusResponse(result.getStatus(), progress, successCount, errorCount);
     }
 } 

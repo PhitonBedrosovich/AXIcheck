@@ -16,7 +16,21 @@ public interface RequestItemRepository extends JpaRepository<RequestItem, Long> 
     @Query("SELECT new com.example.service1.dto.BatchStatusAggregationDTO(" +
            "COUNT(r), " +
            "SUM(CASE WHEN r.status = 'SUCCESS' THEN 1 ELSE 0 END), " +
-           "SUM(CASE WHEN r.status = 'ERROR' THEN 1 ELSE 0 END)) " +
+           "SUM(CASE WHEN r.status = 'ERROR' THEN 1 ELSE 0 END), " +
+           "CASE " +
+           "  WHEN COUNT(r) = 1 THEN " +
+           "    CASE WHEN SUM(CASE WHEN r.status = 'ERROR' THEN 1 ELSE 0 END) > 0 THEN 'FAILED' " +
+           "    WHEN SUM(CASE WHEN r.status = 'SUCCESS' THEN 1 ELSE 0 END) = 1 THEN 'COMPLETED' " +
+           "    ELSE 'PROCESSING' END " +
+           "  WHEN COUNT(r) > 1 THEN " +
+           "    CASE " +
+           "      WHEN SUM(CASE WHEN r.status IN ('SUCCESS', 'ERROR') THEN 1 ELSE 0 END) = 0 THEN 'PENDING' " +
+           "      WHEN SUM(CASE WHEN r.status = 'SUCCESS' THEN 1 ELSE 0 END) = COUNT(r) THEN 'COMPLETED' " +
+           "      WHEN SUM(CASE WHEN r.status = 'ERROR' THEN 1 ELSE 0 END) = COUNT(r) THEN 'FAILED' " +
+           "      ELSE 'PROCESSING' " +
+           "    END " +
+           "  ELSE 'PENDING' " +
+           "END) " +
            "FROM RequestItem r WHERE r.batchRequest.id = :batchId")
     List<com.example.service1.dto.BatchStatusAggregationDTO> getBatchStatusAggregationDTO(@Param("batchId") Long batchId);
 
